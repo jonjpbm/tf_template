@@ -1,0 +1,132 @@
+name: 'Terraform Pull Request'
+
+on:
+  pull_request:
+
+jobs:
+  terraform-plan:
+    name: "Terraform Pull Request"
+    runs-on: x2-runners #ubuntu-latest
+    steps:
+      #----------------------------- Setup -------------------------------#
+      # Checkout the code
+      # Marketplace: https://github.com/marketplace/actions/checkout
+      - name: Setup - Checkout
+        uses: actions/checkout@v2.1.0
+
+      # Static analysis of Terraform templates to spot potential security issues
+      # Marketplace: https://github.com/marketplace/actions/terraform-security-scan
+      - name: Setup - Security Scan
+        uses: triat/terraform-security-scan@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Configure AWS credential environment variables for use in other GitHub Actions.
+      # https://github.com/aws-actions/configure-aws-credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: us-east-1
+
+      # Downloads a specific version of Terraform CLI and adds it to PATH
+      # Marketplace: https://github.com/marketplace/actions/hashicorp-setup-terraform
+      - name: Setup - Terraform CLI
+        uses: hashicorp/setup-terraform@v1
+
+      #https://github.com/marketplace/actions/setup-tflint
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v1
+        with:
+          tflint_version: latest
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      #https://github.com/dorny/paths-filter
+      - name: "Path Filter"
+        uses: dorny/paths-filter@v2.2.1
+        id: filter
+        with:
+          filters: |
+            dev:
+              - 'dev/**'
+            prod:
+              - 'prod/**'
+
+      #----------------------------- Action -------------------------------#
+      # tflint Prod Folder
+      - name: Run TFLint
+        if: steps.filter.outputs.prod == 'true'
+        run: cd prod && tflint -f compact
+
+      # tflint Dev Folder
+      - name: Run TFLint
+        if: steps.filter.outputs.dev == 'true'
+        run: cd dev && tflint -f compact
+
+      # Terraform init prod
+      - name: Terraform Init Prod
+        id: init_prod
+        if: steps.filter.outputs.prod == 'true'
+        run: cd prod && terraform init -input=false
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_GHA_NAMEOFREPO_PROD }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY_GHA_NAMEOFREPO_PROD }}
+        # GIT_SSH_COMMAND: "echo '${{ secrets.IHM_GH_SREBOT_SSH }}' > id_rsa
+        # && ssh-keyscan github.com > known_hosts
+        # && chmod 600 id_rsa known_hosts
+        # && ssh -i ./id_rsa -o UserKnownHostsFile=./known_hosts"
+
+      # Terraform init nonprod
+      - name: Terraform Init Dev
+        id: init_dev
+        if: steps.filter.outputs.dev == 'true'
+        run: cd dev && terraform init -input=false
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_GHA_NAMEOFREPO_NONPROD}}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY_GHA_NAMEOFREPO_NONPROD }}
+        # GIT_SSH_COMMAND: "echo '${{ secrets.IHM_GH_SREBOT_SSH }}' > id_rsa
+        # && ssh-keyscan github.com > known_hosts
+        # && chmod 600 id_rsa known_hosts
+        # && ssh -i ./id_rsa -o UserKnownHostsFile=./known_hosts"
+
+      # The id value is used for reference in the comment step via "steps.plan.outputs.stdout"
+      # Note: Color is disabled to prevent messy characters from appearing in the pull request comment
+      - name: Terraform Plan Prod
+        id: plan_prod
+        if: github.event_name == 'pull_request' && steps.filter.outputs.prod == 'true'
+        run: cd prod && terraform plan -no-color
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_GHA_NAMEOFREPO_PROD }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY_GHA_NAMEOFREPO_PROD }}
+        # GIT_SSH_COMMAND: "echo '${{ secrets.IHM_GH_SREBOT_SSH }}' > id_rsa
+        # && ssh-keyscan github.com > known_hosts
+        # && chmod 600 id_rsa known_hosts
+        # && ssh -i ./id_rsa -o UserKnownHostsFile=./known_hosts"
+        continue-on-error: true
+
+      - name: Terraform Plan Dev
+        id: plan_dev
+        if: github.event_name == 'pull_request' && steps.filter.outputs.dev == 'true'
+        run: cd dev && terraform plan -no-color
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_GHA_NAMEOFREPO_NONPROD}}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY_GHA_NAMEOFREPO_NONPROD }}
+        # GIT_SSH_COMMAND: "echo '${{ secrets.IHM_GH_SREBOT_SSH }}' > id_rsa
+        # && ssh-keyscan github.com > known_hosts
+        # && chmod 600 id_rsa known_hosts
+        # && ssh -i ./id_rsa -o UserKnownHostsFile=./known_hosts"
+        continue-on-error: true
+
+      # Submit a comment with the plan output to the pull request
+      - name: "Run - Terraform Comment"
+        uses: actions/github-script@0.9.0
+        env:
+          STDOUT: "```${{ steps.plan.outputs.stdout }}```"
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: process.env.STDOUT
+            })

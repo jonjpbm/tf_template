@@ -1,0 +1,78 @@
+name: 'Terraform Apply'
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  Terraform-apply:
+    name: "Terraform Apply"
+    runs-on: ubuntu-latest
+    steps:
+      #----------------------------- Setup -------------------------------#
+      # Checkout the code
+      # Marketplace: https://github.com/marketplace/actions/checkout
+      - name: Setup - Checkout
+        uses: actions/checkout@v2.1.0
+        with:
+          terraform_version: 1.0.0
+
+      # Configure AWS credential environment variables for use in other GitHub Actions.
+      # https://github.com/aws-actions/configure-aws-credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: us-east-1
+
+      # Downloads a specific version of Terraform CLI and adds it to PATH
+      # Marketplace: https://github.com/marketplace/actions/hashicorp-setup-terraform
+      - name: Setup - Terraform CLI
+        uses: hashicorp/setup-terraform@v1
+
+      #https://github.com/dorny/paths-filter
+      - name: "Path Filter"
+        uses: dorny/paths-filter@v2.2.1
+        id: filter
+        with:
+          filters: |
+            dev:
+              - 'dev/**'
+            prod:
+              - 'prod/**'
+
+      #----------------------------- Action -------------------------------#
+      # Terraform init in prod folder
+      - name: Terraform Init prod
+        id: init_prod
+        if: steps.filter.outputs.prod == 'true'
+        run: cd prod && terraform init -input=false
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_GHA_NAMEOFREPO_PROD }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY_GHA_NAMEOFREPO_PROD }}
+
+      # Terraform init in dev folder
+      - name: Terraform Init dev
+        id: init_dev
+        if: steps.filter.outputs.dev == 'true'
+        run: cd dev && terraform init -input=false
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_GHA_NAMEOFREPO_NONPROD}}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY_GHA_NAMEOFREPO_NONPROD }}
+
+      # Terraform apply in prod folder
+      # Auto-approve prevents the requirement of human interaction
+      - name: Terraform Apply Prod
+        if: github.ref == 'refs/heads/master' && steps.filter.outputs.prod == 'true'
+        run: cd prod && terraform apply -input=false -auto-approve
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_GHA_NAMEOFREPO_PROD }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY_GHA_NAMEOFREPO_PROD }}
+
+      # Terraform apply in dev folder
+      # Auto-approve prevents the requirement of human interaction
+      - name: Terraform Apply Dev
+        if: github.ref == 'refs/heads/master' && steps.filter.outputs.dev == 'true'
+        run: cd dev && terraform apply -input=false -auto-approve
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_GHA_NAMEOFREPO_NONPROD}}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY_GHA_NAMEOFREPO_NONPROD }}
