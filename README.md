@@ -82,8 +82,10 @@ https://medium.com/slalom-build/pre-commit-hooks-for-terraform-9356ee6db882
 <br />
 ## Limitations
 <br />
+
 ## Known Issues
 <br />
+
 ## Usage
 
 ### How to use it locally
@@ -182,7 +184,7 @@ and you're using a git reference for a given module, you will need to follow the
 
 https://stackoverflow.com/a/67712889/10786944
 <br />
-Note
+## Notes
 Notes here
 <br />
 <!-- BEGIN_TF_DOCS -->
