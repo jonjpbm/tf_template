@@ -69,6 +69,7 @@ Pros - Less complex
 
 Cons - Less code
 <br />
+
 ## Pre-commit
 I'm going to simply suggest using pre-commit here.
 Pre-commit gives one the ability to automate some important but simple tasks when a commit is executed. The possibilities are almost endless depending on the effort.
@@ -119,6 +120,7 @@ Now pre-commit will run automatically on git commit!
 * Looks for and does terraform checks. fmt, security, and linting
 * Lastly, it attempts to make some basic documentation using [terraform-docs](https://github.com/terraform-docs/terraform-docs)
 <br />
+
 ## Github Actions Workflow YAMLs
 So how you structure the code in the repo and how one handles multiple eviornments will directly effect your github action workflows.
 
