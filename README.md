@@ -5,6 +5,7 @@ This is an attempt to create a terraform template repository
 
 This will be a combination to both good practices, common solutions
 <br />
+
 ## Terraform File and Folder Structure
 File name and structure and folder structure are very subjective and you can find many
 examples of file name and structure.
