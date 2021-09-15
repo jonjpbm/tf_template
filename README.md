@@ -29,6 +29,7 @@ Here is a suggestion of files to use and a suggestion of an explination for thei
 **NOTE**: The use of this file may change if one chooses to use [partial backend configuration](https://www.terraform.io/docs/backends/config.html#partial-configuration). It looks like this file is not needed if so.
 * `README.md` - This is your standard readme.
 <br />
+
 ## Handling Different Enviornments
 This is an attempt to give suggestions on how to handle different enviornments in your terraform repository.
 
