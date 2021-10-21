@@ -6,7 +6,7 @@ on:
 jobs:
   terraform-plan:
     name: "Terraform Pull Request"
-    runs-on: x2-runners #ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       #----------------------------- Setup -------------------------------#
       # Checkout the code
