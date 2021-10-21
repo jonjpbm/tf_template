@@ -22,57 +22,25 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
           aws-region: us-east-1
 
       # Downloads a specific version of Terraform CLI and adds it to PATH
       # Marketplace: https://github.com/marketplace/actions/hashicorp-setup-terraform
       - name: Setup - Terraform CLI
         uses: hashicorp/setup-terraform@v1
-
-      #https://github.com/dorny/paths-filter
-      - name: "Path Filter"
-        uses: dorny/paths-filter@v2.2.1
-        id: filter
         with:
-          filters: |
-            dev:
-              - 'dev/**'
-            prod:
-              - 'prod/**'
+          terraform_version: 1.0.8
 
       #----------------------------- Action -------------------------------#
       # Terraform init in prod folder
-      - name: Terraform Init prod
-        id: init_prod
-        if: steps.filter.outputs.prod == 'true'
-        run: cd prod && terraform init -input=false
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_GHA_NAMEOFREPO_PROD }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY_GHA_NAMEOFREPO_PROD }}
+      - name: Terraform Init
+        id: init
+        run: terraform init -input=false
 
-      # Terraform init in dev folder
-      - name: Terraform Init dev
-        id: init_dev
-        if: steps.filter.outputs.dev == 'true'
-        run: cd dev && terraform init -input=false
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_GHA_NAMEOFREPO_NONPROD}}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY_GHA_NAMEOFREPO_NONPROD }}
-
-      # Terraform apply in prod folder
+      # Terraform apply 
       # Auto-approve prevents the requirement of human interaction
-      - name: Terraform Apply Prod
-        if: github.ref == 'refs/heads/master' && steps.filter.outputs.prod == 'true'
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/master'
         run: cd prod && terraform apply -input=false -auto-approve
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_GHA_NAMEOFREPO_PROD }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY_GHA_NAMEOFREPO_PROD }}
-
-      # Terraform apply in dev folder
-      # Auto-approve prevents the requirement of human interaction
-      - name: Terraform Apply Dev
-        if: github.ref == 'refs/heads/master' && steps.filter.outputs.dev == 'true'
-        run: cd dev && terraform apply -input=false -auto-approve
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_GHA_NAMEOFREPO_NONPROD}}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY_GHA_NAMEOFREPO_NONPROD }}
